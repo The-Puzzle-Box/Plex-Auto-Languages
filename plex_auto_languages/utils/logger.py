@@ -1,23 +1,8 @@
 import logging
-
+import os
+import sys
 
 class CustomFormatter(logging.Formatter):
-    """
-    Custom log formatter with color-coded output for different log levels.
-
-    This formatter applies different ANSI color codes to log messages based on
-    their severity level, making logs more readable in terminal output.
-
-    Attributes:
-        grey (str): ANSI color code for grey text.
-        blue (str): ANSI color code for blue text.
-        yellow (str): ANSI color code for yellow text.
-        red (str): ANSI color code for red text.
-        bold_red (str): ANSI color code for bold red text.
-        reset (str): ANSI code to reset text formatting.
-        fmt (str): The log message format string.
-        FORMATS (dict): Mapping of log levels to their formatted strings with colors.
-    """
     grey = "\x1b[38;21m"
     blue = "\x1b[38;5;39m"
     yellow = "\x1b[38;5;226m"
@@ -35,54 +20,53 @@ class CustomFormatter(logging.Formatter):
     }
 
     def format(self, record):
-        """
-        Format the log record with appropriate color based on log level.
-
-        Args:
-            record (logging.LogRecord): The log record to format.
-
-        Returns:
-            str: The formatted log message with color coding.
-        """
         log_fmt = self.FORMATS.get(record.levelno, self.grey + self.fmt + self.reset)
         formatter = logging.Formatter(log_fmt)
         return formatter.format(record)
 
 
+def get_runtime_path():
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+
 def init_logger() -> logging.Logger:
-    """
-    Initialize and configure the application logger.
-
-    Creates a logger with a custom formatter that outputs color-coded logs
-    to the console. Ensures handlers are only added once and prevents
-    log propagation to avoid duplicate entries.
-
-    Returns:
-        logging.Logger: Configured logger instance ready for use.
-    """
     logger = logging.getLogger("Logger")
 
-    # Avoid adding handlers multiple times
-    if not logger.hasHandlers():
-        logger.setLevel(logging.INFO)
-        logger_stream_handler = logging.StreamHandler()
-        logger_stream_handler.setFormatter(CustomFormatter())
-        logger.addHandler(logger_stream_handler)
+    # Prevent duplicate handlers
+    if logger.hasHandlers():
+        return logger
 
-    # Prevent propagation to root logger to avoid duplicate logs
+    logger.setLevel(logging.INFO)
+
+    # Enable ANSI colors on Windows
+    if os.name == "nt":
+        try:
+            import ctypes
+            kernel32 = ctypes.windll.kernel32
+            kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
+        except Exception:
+            pass
+
+    # Console handler (color)
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(CustomFormatter())
+    logger.addHandler(console_handler)
+
+    # File handler (no color)
+    runtime_path = get_runtime_path()
+    log_dir = os.path.join(runtime_path, "logs")
+    os.makedirs(log_dir, exist_ok=True)
+
+    log_file = os.path.join(log_dir, "plex_auto_languages.log")
+    file_handler = logging.FileHandler(log_file, encoding="utf-8")
+    file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+    logger.addHandler(file_handler)
+
     logger.propagate = False
-
     return logger
 
 
 def get_logger() -> logging.Logger:
-    """
-    Retrieve the application logger instance.
-
-    This function provides a convenient way to access the logger
-    from anywhere in the application without reinitializing it.
-
-    Returns:
-        logging.Logger: The application's logger instance.
-    """
     return logging.getLogger("Logger")

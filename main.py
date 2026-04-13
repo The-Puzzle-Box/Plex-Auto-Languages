@@ -1,5 +1,8 @@
 import signal
 import argparse
+import os
+import sys
+import time
 from time import sleep
 from websocket import WebSocketConnectionClosedException, WebSocketTimeoutException
 
@@ -12,6 +15,12 @@ from plex_auto_languages.utils.healthcheck import HealthcheckServer
 
 # Version information
 __version__ = "1.5.1"
+
+def get_runtime_path():
+    if getattr(sys, 'frozen', False):
+        # Running as bundled executable
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
 
 class PlexAutoLanguages:
     """
@@ -332,16 +341,46 @@ if __name__ == "__main__":
     # Initialize the logger.
     logger = init_logger()
 
-    # Log the version information.
-    logger.info(f"Starting Plex Auto Languages - Version {__version__}")
+    base_path = get_runtime_path()
+    config_path = os.path.join(base_path, "config.yaml")
+    example_config_path = os.path.join(base_path, "config.example.yaml")
+    readme_path = os.path.join(base_path, "README.md")
 
-    # Parse command-line arguments.
-    parser = argparse.ArgumentParser(description="Plex Auto Languages")
-    parser.add_argument("-c", "--config_file", type=str, help="Path to the configuration file")
-    args = parser.parse_args()
+    # Embedded example inside PyInstaller bundle
+    bundle_base = getattr(sys, "_MEIPASS", base_path)
+    embedded_example = os.path.join(bundle_base, "config.example.yaml")
+    embedded_readme = os.path.join(bundle_base, "README.md")
 
-    # Create the main application instance.
-    plex_auto_languages = PlexAutoLanguages(args.config_file)
+    # Copy README to exe folder
+    if not os.path.exists(readme_path) and os.path.exists(embedded_readme):
+        import shutil
+        shutil.copyfile(embedded_readme, readme_path)
+        
+    # --- CASE 1: config.yaml exists → normal startup ---
+    if os.path.exists(config_path):
+        logger.info(f"Starting Plex Auto Languages - Version {__version__}")
+        parser = argparse.ArgumentParser(description="Plex Auto Languages")
+        parser.add_argument("-c", "--config_file", type=str, help="Path to the configuration file")
+        args = parser.parse_args()
+        config_file = args.config_file or config_path
+        plex_auto_languages = PlexAutoLanguages(config_file)
+        plex_auto_languages.start()
+        sys.exit(0)
 
-    # Start the application.
-    plex_auto_languages.start()
+    # --- CASE 3: example exists in exe folder, but no config.yaml ---
+    if os.path.exists(example_config_path):
+        logger.info("No user config. Please create config.yaml from config.example.yaml.")
+        time.sleep(5)
+        sys.exit(0)
+
+    # --- CASE 2: neither config.yaml nor example exist → create example ---
+    if os.path.exists(embedded_example):
+        shutil.copyfile(embedded_example, example_config_path)
+        logger.info("No config files exist. Creating example config (config.example.yaml).")
+        time.sleep(5)
+        sys.exit(0)
+
+    # --- Fallback: embedded example missing (should never happen) ---
+    logger.error("No config files exist and embedded example is missing. Cannot continue.")
+    time.sleep(5)
+    sys.exit(1)
