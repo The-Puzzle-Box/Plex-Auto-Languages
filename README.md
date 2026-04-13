@@ -118,6 +118,37 @@ Follow these steps for a native Python setup:
 
 -----
 
+#### Windows Installation
+
+Follow these steps to run on Windows OS
+
+1. **Download the latest "PlexAutoLanguages.exe" binary from the releases page**:
+  
+    Find the latest release here. https://github.com/The-Puzzle-Box/Plex-Auto-Languages/releases
+
+2. **Create a folder wherever you would like the file to live**: 
+    
+    Recommended location is '/%userprofile%/"Plex Auto Languages"/'
+
+3. **Run the `PlexAutoLanguages.exe` Application**
+
+    Double click on `PlexAutoLanguages.exe" to run the file.
+    
+    **Note:** The `PlexAutoLanguages.exe` will create default `config.example.yaml` and `./logs/plex_auto_languages.txt` file in the same folder you place the `exe` file when it is first run.
+
+4. **Create Configuration File**
+    If you did not create a user configuration file before running the `exe`. Use the [default configuration file](config.example.yaml) created in the folder. 
+
+    **(Optional)** Before running the first time. Use the template in the [default configuration file](https://github.com/The-Puzzle-Box/Plex-Auto-Languages/blob/main/config/config.example.yaml) to create your own `config.yaml` and place in the folder you place the `exe` file. Only `plex.url` and `plex.token` are required. Rename the `config.example.yaml` to `config.yaml` before running the `exe`.
+
+5. **Run the Application**
+
+    Double click on `PlexAutoLanguages.exe" to run the file.
+
+**Note: If you would like to install the Application as a Windows Service. You can use a service manager application like Servy or NSSM. Servy is recommended as it has more features and is actively developed, unlike NSSM.**
+
+----
+
 ### How to Update
 
 #### Updating Docker
